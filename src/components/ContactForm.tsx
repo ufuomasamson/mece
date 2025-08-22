@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
+import API_ENDPOINTS from '@/config/api';
 import { useToast } from "@/hooks/use-toast";
 
 const ContactForm = () => {
@@ -30,7 +31,7 @@ const ContactForm = () => {
     
     try {
       // Submit to backend API
-      const response = await fetch('http://localhost:5001/api/submissions/contact', {
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS.CONTACT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

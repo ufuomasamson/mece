@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import API_ENDPOINTS from '@/config/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +23,7 @@ const PromoteToAdmin: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/promote-to-admin', {
+      const response = await fetch(API_ENDPOINTS.AUTH.PROMOTE_TO_ADMIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

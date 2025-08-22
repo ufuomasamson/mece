@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import API_ENDPOINTS from '@/config/api';
 
 // Define the structure for website content
 export interface WebsiteContent {
@@ -302,7 +303,7 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
     const loadContentFromDatabase = async () => {
       try {
         console.log('ContentContext - Loading from database...');
-        const response = await fetch('http://localhost:5001/api/content');
+        const response = await fetch(API_ENDPOINTS.CONTENT.GET_ALL);
         if (response.ok) {
           const data = await response.json();
           console.log('ContentContext - Loaded from database:', data);
@@ -366,7 +367,7 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
           const dbData = convertFrontendToDatabase(content);
           console.log('ContentContext - Converted to DB format:', dbData);
           
-          const response = await fetch('http://localhost:5001/api/content', {
+          const response = await fetch(API_ENDPOINTS.CONTENT.SAVE_ALL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

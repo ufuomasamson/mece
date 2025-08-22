@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useContent } from "@/contexts/ContentContext";
 import { useAuth } from "@/contexts/AuthContext";
+import API_ENDPOINTS from '@/config/api';
 import { toast } from "sonner";
 import { 
   Eye, 
@@ -76,7 +77,7 @@ const SubmissionsManagement = () => {
       
       try {
         console.log('Fetching submissions with token:', token);
-        const response = await fetch('http://localhost:5001/api/submissions/participate', {
+        const response = await fetch(API_ENDPOINTS.SUBMISSIONS.PARTICIPATE, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -153,7 +154,7 @@ const SubmissionsManagement = () => {
       
       try {
         console.log('Fetching contact submissions with token:', token);
-        const response = await fetch('http://localhost:5001/api/submissions/contact', {
+        const response = await fetch(API_ENDPOINTS.SUBMISSIONS.CONTACT, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

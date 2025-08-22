@@ -9,6 +9,7 @@ import Layout from "@/components/Layout";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import API_ENDPOINTS from "@/config/api";
 
 // Nigeria States and LGAs data
 const nigeriaStates = [
@@ -193,7 +194,7 @@ const Registration = () => {
       const imageDataUrl = await compressAndConvertImage(formData.passportPhoto);
 
       // Submit to API
-      const response = await fetch('http://localhost:5001/api/submissions/participate', {
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS.PARTICIPATE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
