@@ -6,7 +6,7 @@ import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-// import PaymentService from './services/paymentService.js';
+import PaystackService from './services/paystackService.js';
 
 // Load environment variables
 dotenv.config();
@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-// const paymentService = new PaymentService();
+const paystackService = new PaystackService();
 
 // Middleware
 app.use(cors());
@@ -743,24 +743,24 @@ app.patch('/api/submissions/contact/:id', (req, res) => {
   });
 });
 
-// Payment Routes
+// Paystack Payment Routes
 
-// Create payment intent
-app.post('/api/payments/create-intent', async (req, res) => {
-  const { amount, currency = 'USD', submissionId, customerId } = req.body;
+// Initialize payment transaction
+app.post('/api/payments/initialize', async (req, res) => {
+  const { email, amount, callbackUrl } = req.body;
 
   try {
-    // Validate amount
-    const validation = paymentService.validatePaymentAmount(amount);
+    // Validate amount (must be 8550 NGN)
+    const validation = paystackService.validateAmount(amount);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.error });
     }
 
-    // Create payment intent
-    const result = await paymentService.createPaymentIntent(amount, currency, {
-      submission_id: submissionId,
-      customer_id: customerId
-    });
+    // Generate unique reference
+    const reference = paystackService.generateReference();
+
+    // Initialize transaction with Paystack
+    const result = await paystackService.initializeTransaction(email, amount, reference, callbackUrl);
 
     if (!result.success) {
       return res.status(500).json({ error: result.error });
@@ -769,79 +769,82 @@ app.post('/api/payments/create-intent', async (req, res) => {
     // Store payment record in database
     const query = `
       INSERT INTO payments 
-      (submission_id, amount, currency, payment_method, payment_id, stripe_payment_intent_id, stripe_customer_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      (amount, currency, payment_method, payment_id, reference, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `;
 
-    db.run(query, [submissionId, amount, currency, 'stripe', result.paymentIntentId, result.paymentIntentId, customerId], function(err) {
+    db.run(query, [amount, 'NGN', 'paystack', reference, 'pending'], function(err) {
       if (err) {
         console.error('Error storing payment record:', err);
+        return res.status(500).json({ error: 'Failed to store payment record' });
       }
     });
 
     res.json({
-      clientSecret: result.clientSecret,
-      paymentIntentId: result.paymentIntentId,
-      amount: result.amount,
-      currency: result.currency
+      success: true,
+      authorization_url: result.data.authorization_url,
+      reference: reference,
+      access_code: result.data.access_code
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Payment initialization error:', error);
+    res.status(500).json({ error: 'Failed to initialize payment' });
   }
 });
 
-// Confirm payment
-app.post('/api/payments/confirm', async (req, res) => {
-  const { paymentIntentId, submissionId } = req.body;
+// Verify payment transaction
+app.post('/api/payments/verify', async (req, res) => {
+  const { reference } = req.body;
 
   try {
-    const result = await paymentService.confirmPayment(paymentIntentId);
-    
-    if (result.success) {
+    // Verify transaction with Paystack
+    const result = await paystackService.verifyTransaction(reference);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    if (result.isSuccessful) {
       // Update payment status in database
       const updatePaymentQuery = `
         UPDATE payments 
-        SET status = 'completed' 
-        WHERE stripe_payment_intent_id = ?
+        SET status = 'completed', updated_at = datetime('now')
+        WHERE reference = ?
       `;
 
-      const updateSubmissionQuery = `
-        UPDATE participate_submissions 
-        SET payment_status = 'paid', payment_id = ? 
-        WHERE id = ?
-      `;
-
-      db.serialize(() => {
-        db.run(updatePaymentQuery, [paymentIntentId]);
-        db.run(updateSubmissionQuery, [paymentIntentId, submissionId]);
+      db.run(updatePaymentQuery, [reference], function(err) {
+        if (err) {
+          console.error('Error updating payment status:', err);
+        }
       });
 
       res.json({
         success: true,
-        message: 'Payment confirmed successfully',
-        status: result.status
+        message: 'Payment verified successfully',
+        data: result.data
       });
     } else {
       res.json({
         success: false,
-        message: result.error,
-        status: result.status
+        message: 'Payment verification failed',
+        data: result.data
       });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Payment verification error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
   }
 });
 
 // Get payment details
-app.get('/api/payments/:paymentIntentId', async (req, res) => {
-  const { paymentIntentId } = req.params;
+app.get('/api/payments/:reference', async (req, res) => {
+  const { reference } = req.params;
 
   try {
-    const result = await paymentService.getPaymentDetails(paymentIntentId);
+    const result = await paystackService.getTransaction(reference);
     
     if (result.success) {
-      res.json(result.paymentIntent);
+      res.json(result.data);
     } else {
       res.status(404).json({ error: result.error });
     }
@@ -853,18 +856,25 @@ app.get('/api/payments/:paymentIntentId', async (req, res) => {
 // Get all payments
 app.get('/api/payments', (req, res) => {
   const query = `
-    SELECT p.*, ps.full_name as applicant_name, ps.email_address as applicant_email
-    FROM payments p
-    LEFT JOIN participate_submissions ps ON p.submission_id = ps.id
-    ORDER BY p.created_at DESC
+    SELECT * FROM payments
+    ORDER BY created_at DESC
   `;
-  
+
   db.all(query, [], (err, rows) => {
     if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+      console.error('Error fetching payments:', err);
+      return res.status(500).json({ error: 'Failed to fetch payments' });
     }
     res.json(rows);
+  });
+});
+
+// Get payment configuration (public key)
+app.get('/api/payments/config', (req, res) => {
+  res.json({
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    amount: 8550,
+    currency: 'NGN'
   });
 });
 
@@ -1012,6 +1022,30 @@ app.put('/api/content/:section', (req, res) => {
       db.run('ROLLBACK');
       res.status(500).json({ error: error.message });
     }
+  });
+});
+
+// Paystack Settings Management (Admin only)
+app.get('/api/admin/paystack-settings', authenticateToken, requireAdmin, (req, res) => {
+  res.json({
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    secretKey: process.env.PAYSTACK_SECRET_KEY ? '***' + process.env.PAYSTACK_SECRET_KEY.slice(-4) : '',
+    isConfigured: !!(process.env.PAYSTACK_PUBLIC_KEY && process.env.PAYSTACK_SECRET_KEY)
+  });
+});
+
+app.post('/api/admin/paystack-settings', authenticateToken, requireAdmin, (req, res) => {
+  const { publicKey, secretKey } = req.body;
+  
+  if (!publicKey || !secretKey) {
+    return res.status(400).json({ error: 'Both public key and secret key are required' });
+  }
+
+  // In a real production environment, you would want to securely store these
+  // For now, we'll just return success (you'll need to manually update your .env file)
+  res.json({ 
+    message: 'Paystack settings updated successfully. Please update your .env file with the new keys.',
+    note: 'Restart the server after updating the .env file for changes to take effect.'
   });
 });
 

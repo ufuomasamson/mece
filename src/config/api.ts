@@ -33,12 +33,18 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/api/blog`,
   },
   
+  // Admin endpoints
+  ADMIN: {
+    PAYSTACK_SETTINGS: `${API_BASE_URL}/api/admin/paystack-settings`,
+  },
+  
   // Payment endpoints
   PAYMENTS: {
-    CREATE_INTENT: `${API_BASE_URL}/api/payments/create-intent`,
-    CONFIRM: `${API_BASE_URL}/api/payments/confirm`,
-    GET_DETAILS: (id: string) => `${API_BASE_URL}/api/payments/${id}`,
+    INITIALIZE: `${API_BASE_URL}/api/payments/initialize`,
+    VERIFY: `${API_BASE_URL}/api/payments/verify`,
+    GET_DETAILS: (reference: string) => `${API_BASE_URL}/api/payments/${reference}`,
     GET_ALL: `${API_BASE_URL}/api/payments`,
+    CONFIG: `${API_BASE_URL}/api/payments/config`,
   },
 };
 

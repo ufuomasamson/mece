@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import ContactForm from "@/components/ContactForm";
 import CompetitionGrid from "@/components/CompetitionGrid";
 import { Link } from "react-router-dom";
-import {
-  Users,
-  Target,
-  Award,
+import { 
+  Users, 
+  Target, 
+  Award, 
   Handshake,
   MapPin,
   Phone,
@@ -189,7 +189,7 @@ const Index = () => {
     <>
       {/* <Background3DScene /> */}
 
-      <Layout>
+    <Layout>
         {/* 3D Hero Section - Temporarily disabled */}
         {/* <Hero3D /> */}
 
@@ -225,60 +225,60 @@ const Index = () => {
             <div className="text-lg md:text-xl mb-8 space-y-2 transform-gpu hover:scale-105 transition-transform duration-500">
               <p>"{content.hero.tagline1}"</p>
               <p>"{content.hero.tagline2}"</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="secondary" asChild className="transform-gpu hover:scale-110 hover:shadow-2xl transition-all duration-300">
-                <Link to="/participate">How Can We Help</Link>
-              </Button>
-              <Button size="lg" className="bg-primary/20 hover:bg-primary/30 text-primary-foreground border-2 border-primary-foreground transform-gpu hover:scale-110 hover:shadow-2xl transition-all duration-300" asChild>
-                <Link to="/about">About Us</Link>
-              </Button>
-            </div>
           </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" variant="secondary" asChild className="transform-gpu hover:scale-110 hover:shadow-2xl transition-all duration-300">
+              <Link to="/participate">How Can We Help</Link>
+            </Button>
+              <Button size="lg" className="bg-primary/20 hover:bg-primary/30 text-primary-foreground border-2 border-primary-foreground transform-gpu hover:scale-110 hover:shadow-2xl transition-all duration-300" asChild>
+              <Link to="/about">About Us</Link>
+            </Button>
+          </div>
+        </div>
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent transform-gpu animate-pulse z-10"></div>
-        </section>
+      </section>
 
-        {/* Our Mission Section */}
+      {/* Our Mission Section */}
         <section ref={missionRef} className="py-16 bg-background perspective-1000 particles-bg">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
               <h2 className="text-3xl md:text-5xl font-bold mb-8 bg-gradient-hero bg-clip-text text-transparent transform-gpu hover:scale-105 transition-transform duration-500 gradient-text">
                 {content.mission.title}
-              </h2>
+            </h2>
               <Card className="shadow-elegant transform-gpu hover:scale-105 hover:shadow-glow transition-all duration-500 card-hover-3d">
-                <CardContent className="p-8 md:p-12">
-                  <p className="text-lg md:text-xl leading-relaxed">
+              <CardContent className="p-8 md:p-12">
+                <p className="text-lg md:text-xl leading-relaxed">
                     {content.mission.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                </p>
+              </CardContent>
+            </Card>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Competition Grid */}
+      {/* Competition Grid */}
         <div ref={competitionRef}>
-          <CompetitionGrid />
+      <CompetitionGrid />
         </div>
 
-        {/* Services Section */}
+      {/* Services Section */}
         <section ref={servicesRef} className="py-16 bg-muted/30 perspective-1000 particles-bg">
-          <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4">
 
             
-            <div className="text-center mb-12">
+          <div className="text-center mb-12">
               <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-hero bg-clip-text text-transparent transform-gpu hover:scale-105 transition-transform duration-500 gradient-text">
                 {content.services.title}
-              </h2>
+            </h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto transform-gpu hover:scale-105 transition-transform duration-500">
                 {content.services.description}
-              </p>
-            </div>
+            </p>
+          </div>
 
 
-            
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              {services.map((service, index) => (
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {services.map((service, index) => (
                 <Card
                   key={index}
                   className={`service-card shadow-elegant hover:shadow-glow transition-all duration-500 transform-gpu hover:scale-105 hover:-rotate-1 group perspective-1000 card-hover-3d stagger-${index + 1}`}
@@ -304,23 +304,23 @@ const Index = () => {
                 >
                   <CardContent className="p-6 transform-gpu group-hover:scale-105 transition-transform duration-300">
                     <h3 className="text-lg font-semibold mb-4 text-primary transform-gpu group-hover:scale-105 transition-transform duration-300 text-glow-primary">
-                      {service.title}
-                    </h3>
-                    <ul className="space-y-2 text-sm">
-                      {service.items.map((item, itemIndex) => (
+                    {service.title}
+                  </h3>
+                  <ul className="space-y-2 text-sm">
+                    {service.items.map((item, itemIndex) => (
                         <li key={itemIndex} className="flex items-start space-x-2 transform-gpu group-hover:scale-105 transition-transform duration-300">
                           <div className="w-1.5 h-1.5 bg-secondary rounded-full mt-2 flex-shrink-0 transform-gpu group-hover:scale-150 transition-transform duration-300"></div>
-                          <span className="text-muted-foreground">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
             <Card className="shadow-elegant transform-gpu hover:scale-105 hover:shadow-glow transition-all duration-500">
-              <CardContent className="p-8 text-center">
+            <CardContent className="p-8 text-center">
                 <h3 className="text-2xl font-bold mb-4 text-primary transform-gpu hover:scale-105 transition-transform duration-300">
                   Ready to Transform Your Future?
                 </h3>
@@ -329,74 +329,74 @@ const Index = () => {
                 </p>
                 <Button size="lg" variant="secondary" asChild className="transform-gpu hover:scale-110 hover:shadow-2xl transition-all duration-300">
                   <Link to="/participate">Get Started Today</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
-        {/* Contact Section */}
+      {/* Contact Section */}
         <section ref={contactRef} className="py-16 perspective-1000 particles-bg">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
               <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-hero bg-clip-text text-transparent transform-gpu hover:scale-105 transition-transform duration-500 gradient-text">
-                Contact Us
-              </h2>
-            </div>
+              Contact Us
+            </h2>
+          </div>
 
-            <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-              <ContactForm />
-
+          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            <ContactForm />
+            
               <Card className="shadow-elegant transform-gpu hover:scale-105 hover:shadow-glow transition-all duration-500 card-hover-3d">
-                <CardContent className="p-8">
+              <CardContent className="p-8">
                   <h3 className="text-2xl font-bold mb-6 transform-gpu hover:scale-105 transition-transform duration-300">Get In Touch</h3>
-
-                  <div className="space-y-6">
+                
+                <div className="space-y-6">
                     <div className="flex items-start space-x-4 transform-gpu hover:scale-105 transition-transform duration-300 hover-lift">
                       <div className="bg-primary p-2 rounded-lg transform-gpu hover:rotate-12 transition-transform duration-300">
-                        <Phone className="text-primary-foreground" size={20} />
-                      </div>
-                      <div>
-                        <p className="font-semibold">Phone</p>
+                      <Phone className="text-primary-foreground" size={20} />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Phone</p>
                         <p className="text-muted-foreground">{content.footer.contact?.phone || "+234 8032160583"}</p>
                       </div>
-                    </div>
+                  </div>
 
                     <div className="flex items-start space-x-4 transform-gpu hover:scale-105 transition-transform duration-300 hover-lift">
                       <div className="bg-secondary p-2 rounded-lg transform-gpu hover:rotate-12 transition-transform duration-300">
-                        <Mail className="text-secondary-foreground" size={20} />
-                      </div>
-                      <div>
-                        <p className="font-semibold">Email</p>
+                      <Mail className="text-secondary-foreground" size={20} />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Email</p>
                         <p className="text-muted-foreground">{content.footer.contact?.email || "contact@mece.org.ng"}</p>
                       </div>
-                    </div>
+                  </div>
 
                     <div className="flex items-start space-x-4 transform-gpu hover:scale-105 transition-transform duration-300 hover-lift">
                       <div className="bg-accent p-2 rounded-lg transform-gpu hover:rotate-12 transition-transform duration-300">
-                        <MapPin className="text-accent-foreground" size={20} />
-                      </div>
-                      <div>
-                        <p className="font-semibold">Address</p>
-                        <p className="text-muted-foreground">
-                          {content.footer.contact?.address || "NO. 35, AJOSE ADEOGUN STREET, UTAKO, ABUJA, FCT, NIGERIA"}
-                        </p>
-                      </div>
+                      <MapPin className="text-accent-foreground" size={20} />
                     </div>
+                    <div>
+                      <p className="font-semibold">Address</p>
+                      <p className="text-muted-foreground">
+                          {content.footer.contact?.address || "NO. 35, AJOSE ADEOGUN STREET, UTAKO, ABUJA, FCT, NIGERIA"}
+                      </p>
+                      </div>
                   </div>
+                </div>
 
                   <div className="mt-8 p-4 bg-muted rounded-lg transform-gpu hover:scale-105 transition-transform duration-300 hover-lift">
-                    <p className="text-sm text-center text-muted-foreground">
-                      <strong>MECE CONSOLIDATED LTD</strong><br />
-                      Your trusted partner in talent empowerment and innovation
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <p className="text-sm text-center text-muted-foreground">
+                    <strong>MECE CONSOLIDATED LTD</strong><br />
+                    Your trusted partner in talent empowerment and innovation
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </section>
-      </Layout>
+        </div>
+      </section>
+    </Layout>
     </>
   );
 };

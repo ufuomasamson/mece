@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import { useState } from "react";
 import { useContent } from "@/contexts/ContentContext";
-import {
-  Trophy,
-  Sprout,
-  Music,
-  Palette,
-  BookOpen,
+import { 
+  Trophy, 
+  Sprout, 
+  Music, 
+  Palette, 
+  BookOpen, 
   Calculator,
   MessageSquare,
   Shirt,
@@ -106,7 +106,7 @@ const CompetitionGrid = () => {
                 </div>
 
                 {/* Content Section */}
-                <CardContent className="p-6">
+              <CardContent className="p-6">
                   <CardTitle className="text-xl font-bold mb-3 text-primary group-hover:text-primary/80 transition-colors duration-300">
                     {competition.title}
                   </CardTitle>
@@ -117,10 +117,10 @@ const CompetitionGrid = () => {
                     onClick={() => openModal(index)}
                     className="w-full bg-gradient-primary hover:bg-gradient-primary/90 text-white transform-gpu hover:scale-105 transition-all duration-300"
                   >
-                    Learn More
-                  </Button>
-                </CardContent>
-              </Card>
+                  Learn More
+                </Button>
+              </CardContent>
+            </Card>
             );
           })}
         </div>
@@ -154,8 +154,8 @@ const CompetitionGrid = () => {
                   {paragraph.replace(/\*\*(.*?)\*\*/g, '$1')}
                 </p>
               ))}
-            </div>
-          </div>
+      </div>
+    </div>
         </Modal>
       )}
     </section>

@@ -19,6 +19,7 @@ import DashboardHome from "@/components/admin/DashboardHome";
 import ContentManagement from "@/components/admin/ContentManagement";
 import BlogManagement from "@/components/admin/BlogManagement";
 import SubmissionsManagement from "@/components/admin/SubmissionsManagement";
+import PaystackIntegration from "@/components/admin/PaystackIntegration";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -29,6 +30,7 @@ const Admin = () => {
     { id: "content", label: "Content Management", icon: PenTool },
     { id: "blog", label: "Blog Management", icon: FileText },
     { id: "submissions", label: "Submissions", icon: Users },
+    { id: "paystack", label: "Paystack Integration", icon: CreditCard },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -42,6 +44,8 @@ const Admin = () => {
         return <BlogManagement />;
       case "submissions":
         return <SubmissionsManagement />;
+      case "paystack":
+        return <PaystackIntegration />;
       case "settings":
         return <div className="p-6"><h2 className="text-2xl font-bold">Settings</h2><p>Settings page coming soon...</p></div>;
       default:

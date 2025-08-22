@@ -6,10 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/Layout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import API_ENDPOINTS from "@/config/api";
+import { CreditCard, CheckCircle } from "lucide-react";
 
 // Nigeria States and LGAs data
 const nigeriaStates = [
@@ -88,8 +89,24 @@ const Registration = () => {
   });
 
   const [passportPreview, setPassportPreview] = useState<string>("");
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
+
+  // Check for payment success in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      setPaymentCompleted(true);
+      toast({
+        title: "Payment Successful!",
+        description: "Your registration fee has been paid. You can now submit your registration form.",
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -129,8 +146,76 @@ const Registration = () => {
     }
   };
 
+  const handlePayment = async () => {
+    if (!formData.emailAddress) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address before proceeding with payment",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsPaymentLoading(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.PAYMENTS.INITIALIZE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: formData.emailAddress,
+          amount: 8550,
+          callbackUrl: `${window.location.origin}/participate?payment=success`
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.authorization_url) {
+          // Redirect to Paystack payment page
+          window.location.href = data.authorization_url;
+        } else {
+          toast({
+            title: "Payment Error",
+            description: "Failed to initialize payment. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Payment Error",
+          description: errorData.error || "Failed to initialize payment",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to process payment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPaymentLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if payment is completed
+    if (!paymentCompleted) {
+      toast({
+        title: "Payment Required",
+        description: "Please complete the payment before submitting your registration",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (!formData.passportPhoto) {
       toast({
@@ -225,13 +310,13 @@ const Registration = () => {
 
       const result = await response.json();
 
-      toast({
+    toast({
         title: "Registration Submitted!",
         description: "Thank you for your registration. We'll review your application and get back to you soon.",
-      });
+    });
 
       // Reset form
-      setFormData({
+    setFormData({
         fullName: "",
         bankName: "",
         accountNumber: "",
@@ -301,7 +386,7 @@ const Registration = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="bankName">Bank Name *</Label>
                     <Input
@@ -313,7 +398,7 @@ const Registration = () => {
                       required
                     />
                   </div>
-                </div>
+                  </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -327,7 +412,7 @@ const Registration = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="whatsappNumber">WhatsApp Number *</Label>
                     <Input
@@ -339,7 +424,7 @@ const Registration = () => {
                       required
                     />
                   </div>
-                </div>
+                  </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -352,7 +437,7 @@ const Registration = () => {
                       placeholder="Enter your Telegram number (optional)"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="emailAddress">Email Address (Gmail/Other) *</Label>
                     <Input
@@ -365,7 +450,7 @@ const Registration = () => {
                       required
                     />
                   </div>
-                </div>
+                  </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phoneNumber">Phone Number *</Label>
@@ -582,15 +667,82 @@ const Registration = () => {
               </CardContent>
             </Card>
 
+            {/* Section F: Payment */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-primary">
+                  SECTION F: PAYMENT
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-3">
+                    <CreditCard className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900">Registration Fee</h4>
+                      <p className="text-blue-700 text-sm">
+                        A non-refundable registration fee of <span className="font-bold">₦8,550</span> is required to complete your registration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {!paymentCompleted ? (
+                  <div className="space-y-4">
+                    <Button 
+                      type="button"
+                      onClick={handlePayment}
+                      disabled={isPaymentLoading}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {isPaymentLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Processing Payment...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <CreditCard className="h-4 w-4" />
+                          <span>Pay ₦8,550 Registration Fee</span>
+                        </div>
+                      )}
+                    </Button>
+                    
+                    <p className="text-sm text-gray-600 text-center">
+                      You will be redirected to a secure payment page to complete your registration.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <div>
+                        <h4 className="font-semibold text-green-900">Payment Completed!</h4>
+                        <p className="text-green-700 text-sm">
+                          Your registration fee has been paid. You can now submit your registration form.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Submit Button */}
             <div className="text-center">
               <Button 
                 type="submit" 
                 size="lg" 
                 className="px-8 py-3 text-lg font-semibold"
+                disabled={!paymentCompleted}
               >
-                Submit Registration Form
+                {paymentCompleted ? 'Submit Registration Form' : 'Complete Payment First'}
               </Button>
+              {!paymentCompleted && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Please complete the payment above before submitting your registration form.
+                </p>
+              )}
             </div>
           </form>
         </div>
