@@ -56,6 +56,35 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// Load Paystack keys from database
+const loadPaystackKeys = () => {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT public_key, secret_key 
+      FROM paystack_settings 
+      WHERE is_active = 1 
+      ORDER BY updated_at DESC 
+      LIMIT 1
+    `;
+    
+    db.get(query, [], (err, row) => {
+      if (err) {
+        console.error('Error loading Paystack keys:', err);
+        resolve();
+        return;
+      }
+      
+      if (row) {
+        paystackService.setKeys(row.public_key, row.secret_key);
+        console.log('Paystack keys loaded from database');
+      } else {
+        console.log('No Paystack keys found in database');
+      }
+      resolve();
+    });
+  });
+};
+
 // Initialize database tables
 const initDatabase = () => {
   return new Promise((resolve, reject) => {
@@ -220,17 +249,32 @@ const initDatabase = () => {
           submission_id INTEGER,
           user_id INTEGER,
           amount REAL NOT NULL,
-          currency TEXT DEFAULT 'USD',
+          currency TEXT DEFAULT 'NGN',
           payment_method TEXT NOT NULL,
           payment_id TEXT UNIQUE NOT NULL,
+          reference TEXT UNIQUE NOT NULL,
           status TEXT DEFAULT 'pending',
           stripe_payment_intent_id TEXT,
           stripe_customer_id TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (submission_id) REFERENCES participate_submissions (id),
           FOREIGN KEY (user_id) REFERENCES users (id)
         )
       `);
+
+      // Add missing columns to existing payments table
+      db.run(`ALTER TABLE payments ADD COLUMN reference TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.log('Column reference already exists or error:', err.message);
+        }
+      });
+      
+      db.run(`ALTER TABLE payments ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.log('Column updated_at already exists or error:', err.message);
+        }
+      });
 
       // Blog posts table
       db.run(`
@@ -244,6 +288,32 @@ const initDatabase = () => {
           image_url TEXT,
           status TEXT DEFAULT 'draft',
           published_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Paystack settings table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS paystack_settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          public_key TEXT NOT NULL,
+          secret_key TEXT NOT NULL,
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Social media settings table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS social_media_settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          platform TEXT NOT NULL UNIQUE,
+          url TEXT NOT NULL,
+          is_active BOOLEAN DEFAULT 1,
+          icon_name TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
@@ -321,6 +391,45 @@ const initDatabase = () => {
         }
       });
 
+      // Initialize default social media settings
+      db.run(`
+        INSERT OR IGNORE INTO social_media_settings (platform, url, icon_name, display_name)
+        VALUES 
+          ('facebook', 'https://facebook.com/mece', 'facebook', 'Facebook'),
+          ('twitter', 'https://twitter.com/mece', 'twitter', 'Twitter'),
+          ('instagram', 'https://instagram.com/mece', 'instagram', 'Instagram'),
+          ('linkedin', 'https://linkedin.com/company/mece', 'linkedin', 'LinkedIn'),
+          ('youtube', 'https://youtube.com/@mece', 'youtube', 'YouTube'),
+          ('tiktok', 'https://tiktok.com/@mece', 'tiktok', 'TikTok')
+      `, (err) => {
+        if (err) {
+          console.log('Error initializing social media settings:', err.message);
+        } else {
+          console.log('Default social media settings populated successfully');
+        }
+      });
+
+      // Check if TikTok exists, if not add it manually
+      db.get('SELECT id FROM social_media_settings WHERE platform = ?', ['tiktok'], (err, row) => {
+        if (err) {
+          console.log('Error checking TikTok existence:', err.message);
+        } else if (!row) {
+          // TikTok doesn't exist, add it manually
+          db.run(`
+            INSERT INTO social_media_settings (platform, url, icon_name, display_name)
+            VALUES (?, ?, ?, ?)
+          `, ['tiktok', 'https://tiktok.com/@mece', 'tiktok', 'TikTok'], (insertErr) => {
+            if (insertErr) {
+              console.log('Error adding TikTok manually:', insertErr.message);
+            } else {
+              console.log('TikTok added manually to existing database');
+            }
+          });
+        } else {
+          console.log('TikTok already exists in database');
+        }
+      });
+
       db.run("PRAGMA foreign_keys = ON", (err) => {
         if (err) {
           console.error('Error enabling foreign keys:', err);
@@ -335,7 +444,9 @@ const initDatabase = () => {
 };
 
 // Initialize database on startup
-initDatabase().catch(console.error);
+initDatabase()
+  .then(() => loadPaystackKeys())
+  .catch(console.error);
 
 // API Routes
 
@@ -560,6 +671,75 @@ app.post('/api/auth/promote-to-admin', async (req, res) => {
   }
 });
 
+// Get all users (admin only)
+app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  const query = `
+    SELECT id, name, email, role, created_at,
+           (SELECT COUNT(*) FROM participate_submissions WHERE user_id = users.id) as submission_count
+    FROM users 
+    ORDER BY created_at DESC
+  `;
+  
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
+// Delete user (admin only)
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  
+  // Prevent admin from deleting themselves
+  if (parseInt(id) === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own account' });
+  }
+
+  // First, delete related submissions to maintain referential integrity
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // Delete participate submissions
+    db.run('DELETE FROM participate_submissions WHERE user_id = ?', [id], function(err) {
+      if (err) {
+        db.run('ROLLBACK');
+        return res.status(500).json({ error: 'Failed to delete user submissions: ' + err.message });
+      }
+      
+      // Delete payments associated with the user
+      db.run('DELETE FROM payments WHERE user_id = ?', [id], function(err) {
+        if (err) {
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to delete user payments: ' + err.message });
+        }
+        
+        // Finally, delete the user
+        db.run('DELETE FROM users WHERE id = ?', [id], function(err) {
+          if (err) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: 'Failed to delete user: ' + err.message });
+          }
+          
+          if (this.changes === 0) {
+            db.run('ROLLBACK');
+            return res.status(404).json({ error: 'User not found' });
+          }
+          
+          db.run('COMMIT', (err) => {
+            if (err) {
+              return res.status(500).json({ error: 'Failed to complete deletion: ' + err.message });
+            }
+            res.json({ message: 'User and all associated data deleted successfully' });
+          });
+        });
+      });
+    });
+  });
+});
+
 // Get all participate submissions (admin only)
 app.get('/api/submissions/participate', authenticateToken, requireAdmin, (req, res) => {
   const query = `
@@ -717,6 +897,27 @@ app.patch('/api/submissions/participate/:id', (req, res) => {
   });
 });
 
+// Delete participate submission (admin only)
+app.delete('/api/submissions/participate/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  const query = `DELETE FROM participate_submissions WHERE id = ?`;
+
+  db.run(query, [id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (this.changes === 0) {
+      res.status(404).json({ error: 'Submission not found' });
+      return;
+    }
+    
+    res.json({ message: 'Submission deleted successfully' });
+  });
+});
+
 // Update contact submission status
 app.patch('/api/submissions/contact/:id', (req, res) => {
   const { id } = req.params;
@@ -743,13 +944,40 @@ app.patch('/api/submissions/contact/:id', (req, res) => {
   });
 });
 
+// Delete contact submission (admin only)
+app.delete('/api/submissions/contact/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  const query = `DELETE FROM contact_submissions WHERE id = ?`;
+
+  db.run(query, [id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (this.changes === 0) {
+      res.status(404).json({ error: 'Message not found' });
+      return;
+    }
+    
+    res.json({ message: 'Message deleted successfully' });
+  });
+});
+
 // Paystack Payment Routes
 
 // Initialize payment transaction
-app.post('/api/payments/initialize', async (req, res) => {
+app.post('/api/payments/initialize', authenticateToken, async (req, res) => {
   const { email, amount, callbackUrl } = req.body;
+  const userId = req.user.id;
 
   try {
+    // Check if Paystack is configured
+    if (!paystackService.isConfigured()) {
+      return res.status(400).json({ error: 'Paystack payment gateway is not configured. Please contact the administrator.' });
+    }
+
     // Validate amount (must be 8550 NGN)
     const validation = paystackService.validateAmount(amount);
     if (!validation.valid) {
@@ -769,14 +997,15 @@ app.post('/api/payments/initialize', async (req, res) => {
     // Store payment record in database
     const query = `
       INSERT INTO payments 
-      (amount, currency, payment_method, payment_id, reference, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      (user_id, amount, currency, payment_method, payment_id, reference, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
 
-    db.run(query, [amount, 'NGN', 'paystack', reference, 'pending'], function(err) {
+    db.run(query, [userId, amount, 'NGN', 'paystack', reference, reference, 'pending'], function(err) {
       if (err) {
         console.error('Error storing payment record:', err);
-        return res.status(500).json({ error: 'Failed to store payment record' });
+        // Don't return here, just log the error
+        // The payment was successful with Paystack, so we should still return success
       }
     });
 
@@ -793,10 +1022,15 @@ app.post('/api/payments/initialize', async (req, res) => {
 });
 
 // Verify payment transaction
-app.post('/api/payments/verify', async (req, res) => {
+app.post('/api/payments/verify', authenticateToken, async (req, res) => {
   const { reference } = req.body;
 
   try {
+    // Check if Paystack is configured
+    if (!paystackService.isConfigured()) {
+      return res.status(400).json({ error: 'Paystack payment gateway is not configured. Please contact the administrator.' });
+    }
+
     // Verify transaction with Paystack
     const result = await paystackService.verifyTransaction(reference);
 
@@ -815,6 +1049,7 @@ app.post('/api/payments/verify', async (req, res) => {
       db.run(updatePaymentQuery, [reference], function(err) {
         if (err) {
           console.error('Error updating payment status:', err);
+          // Log error but don't fail the verification
         }
       });
 
@@ -836,25 +1071,27 @@ app.post('/api/payments/verify', async (req, res) => {
   }
 });
 
-// Get payment details
-app.get('/api/payments/:reference', async (req, res) => {
-  const { reference } = req.params;
-
-  try {
-    const result = await paystackService.getTransaction(reference);
-    
-    if (result.success) {
-      res.json(result.data);
-    } else {
-      res.status(404).json({ error: result.error });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Get payment configuration (public key) - MUST come before /:reference route
+app.get('/api/payments/config', (req, res) => {
+  // Check if Paystack is configured
+  if (!paystackService.isConfigured()) {
+    return res.status(400).json({ 
+      error: 'Paystack is not configured',
+      publicKey: '',
+      amount: 8550,
+      currency: 'NGN'
+    });
   }
+
+  res.json({
+    publicKey: paystackService.publicKey,
+    amount: 8550,
+    currency: 'NGN'
+  });
 });
 
-// Get all payments
-app.get('/api/payments', (req, res) => {
+// Get all payments (admin only)
+app.get('/api/payments', authenticateToken, requireAdmin, (req, res) => {
   const query = `
     SELECT * FROM payments
     ORDER BY created_at DESC
@@ -869,13 +1106,44 @@ app.get('/api/payments', (req, res) => {
   });
 });
 
-// Get payment configuration (public key)
-app.get('/api/payments/config', (req, res) => {
-  res.json({
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
-    amount: 8550,
-    currency: 'NGN'
+// Get current user's payments
+app.get('/api/payments/my', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const query = `
+    SELECT * FROM payments
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `;
+
+  db.all(query, [userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching user payments:', err);
+      return res.status(500).json({ error: 'Failed to fetch payments' });
+    }
+    res.json(rows);
   });
+});
+
+// Get payment details
+app.get('/api/payments/:reference', async (req, res) => {
+  const { reference } = req.params;
+
+  try {
+    // Check if Paystack is configured
+    if (!paystackService.isConfigured()) {
+      return res.status(400).json({ error: 'Paystack payment gateway is not configured. Please contact the administrator.' });
+    }
+
+    const result = await paystackService.getTransaction(reference);
+    
+    if (result.success) {
+      res.json(result.data);
+    } else {
+      res.status(404).json({ error: result.error });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get all website content
@@ -1027,10 +1295,36 @@ app.put('/api/content/:section', (req, res) => {
 
 // Paystack Settings Management (Admin only)
 app.get('/api/admin/paystack-settings', authenticateToken, requireAdmin, (req, res) => {
-  res.json({
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
-    secretKey: process.env.PAYSTACK_SECRET_KEY ? '***' + process.env.PAYSTACK_SECRET_KEY.slice(-4) : '',
-    isConfigured: !!(process.env.PAYSTACK_PUBLIC_KEY && process.env.PAYSTACK_SECRET_KEY)
+  // Get the most recent active Paystack settings
+  const query = `
+    SELECT public_key, secret_key, is_active, updated_at 
+    FROM paystack_settings 
+    WHERE is_active = 1 
+    ORDER BY updated_at DESC 
+    LIMIT 1
+  `;
+  
+  db.get(query, [], (err, row) => {
+    if (err) {
+      console.error('Error fetching Paystack settings:', err);
+      return res.status(500).json({ error: 'Failed to fetch Paystack settings' });
+    }
+    
+    if (row) {
+      res.json({
+        publicKey: row.public_key,
+        secretKey: '***' + row.secret_key.slice(-4), // Only show last 4 characters
+        isConfigured: true,
+        updatedAt: row.updated_at
+      });
+    } else {
+      res.json({
+        publicKey: '',
+        secretKey: '',
+        isConfigured: false,
+        updatedAt: null
+      });
+    }
   });
 });
 
@@ -1041,11 +1335,38 @@ app.post('/api/admin/paystack-settings', authenticateToken, requireAdmin, (req, 
     return res.status(400).json({ error: 'Both public key and secret key are required' });
   }
 
-  // In a real production environment, you would want to securely store these
-  // For now, we'll just return success (you'll need to manually update your .env file)
-  res.json({ 
-    message: 'Paystack settings updated successfully. Please update your .env file with the new keys.',
-    note: 'Restart the server after updating the .env file for changes to take effect.'
+  // Validate key format (basic validation)
+  if (!publicKey.startsWith('pk_') || !secretKey.startsWith('sk_')) {
+    return res.status(400).json({ error: 'Invalid Paystack key format. Keys should start with pk_ and sk_' });
+  }
+
+  // Deactivate all existing settings
+  db.run('UPDATE paystack_settings SET is_active = 0', [], (err) => {
+    if (err) {
+      console.error('Error deactivating existing settings:', err);
+      return res.status(500).json({ error: 'Failed to update settings' });
+    }
+
+    // Insert new settings
+    const insertQuery = `
+      INSERT INTO paystack_settings (public_key, secret_key, is_active, updated_at)
+      VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+    `;
+    
+    db.run(insertQuery, [publicKey, secretKey], function(err) {
+      if (err) {
+        console.error('Error inserting Paystack settings:', err);
+        return res.status(500).json({ error: 'Failed to save settings' });
+      }
+      
+      // Update the service with new keys
+      paystackService.setKeys(publicKey, secretKey);
+      
+      res.json({ 
+        message: 'Paystack settings updated successfully!',
+        id: this.lastID
+      });
+    });
   });
 });
 
@@ -1088,8 +1409,80 @@ app.post('/api/blog', (req, res) => {
   });
 });
 
-// Serve React app for all other routes
+// Social Media Management API endpoints
+
+// Get all social media settings
+app.get('/api/admin/social-media', authenticateToken, requireAdmin, (req, res) => {
+  const query = `
+    SELECT * FROM social_media_settings 
+    ORDER BY platform
+  `;
+  
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
+// Get public social media links (for homepage footer)
+app.get('/api/social-media', (req, res) => {
+  const query = `
+    SELECT platform, url, icon_name, display_name 
+    FROM social_media_settings 
+    WHERE is_active = 1
+    ORDER BY platform
+  `;
+  
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
+// Update social media setting
+app.put('/api/admin/social-media/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { url, is_active, icon_name, display_name } = req.body;
+
+  if (!url || !icon_name || !display_name) {
+    return res.status(400).json({ error: 'URL, icon name, and display name are required' });
+  }
+
+  const query = `
+    UPDATE social_media_settings 
+    SET url = ?, is_active = ?, icon_name = ?, display_name = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `;
+
+  db.run(query, [url, is_active ? 1 : 0, icon_name, display_name, id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Social media setting not found' });
+    }
+    
+    res.json({ 
+      message: 'Social media setting updated successfully!',
+      changes: this.changes
+    });
+  });
+});
+
+// Serve React app for all other GET routes (but not API routes)
 app.get('*', (req, res) => {
+  // Don't serve React app for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
   res.sendFile(join(__dirname, '../dist/index.html'));
 });
 

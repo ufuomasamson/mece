@@ -1,26 +1,32 @@
-# Enable URL rewriting
 RewriteEngine On
 
-# Handle React Router - redirect all requests to index.html except for API calls
+# Handle React routing - serve index.html for all non-API routes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !^/api/
-RewriteRule ^(.*)$ /index.html [L]
+RewriteRule ^(.*)$ /index.html [QSA,L]
 
-# Proxy API requests to the Node.js server
-RewriteCond %{REQUEST_URI} ^/api/
-RewriteRule ^api/(.*)$ http://localhost:5001/api/$1 [P,L]
+# Proxy API requests to Node.js backend
+RewriteCond %{REQUEST_URI} ^/api/(.*)$
+RewriteRule ^/api/(.*)$ http://localhost:5001/api/$1 [P,L]
 
 # Security headers
-<IfModule mod_headers.c>
-    Header always set X-Content-Type-Options nosniff
-    Header always set X-Frame-Options DENY
-    Header always set X-XSS-Protection "1; mode=block"
-</IfModule>
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+
+# Enable CORS for API requests
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+
+# Handle preflight requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
 
 # Cache static assets
 <IfModule mod_expires.c>
-    ExpiresActive on
+    ExpiresActive On
     ExpiresByType text/css "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
     ExpiresByType image/png "access plus 1 year"
@@ -30,7 +36,7 @@ RewriteRule ^api/(.*)$ http://localhost:5001/api/$1 [P,L]
     ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
 
-# Compress text files
+# Compress files
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/plain
     AddOutputFilterByType DEFLATE text/html

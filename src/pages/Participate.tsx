@@ -91,22 +91,124 @@ const Registration = () => {
   const [passportPreview, setPassportPreview] = useState<string>("");
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+
   const { toast } = useToast();
   const { token } = useAuth();
 
-  // Check for payment success in URL
+  // Check for payment success in URL and verify payment
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success') {
-      setPaymentCompleted(true);
-      toast({
-        title: "Payment Successful!",
-        description: "Your registration fee has been paid. You can now submit your registration form.",
-      });
-      // Clean up URL
+    const reference = urlParams.get('reference');
+    const trxref = urlParams.get('trxref');
+    
+    if (reference || trxref) {
+      // Verify the payment with the backend
+      verifyPayment(reference || trxref);
+      // Clean up the URL
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // Check if user has already paid
+      checkPaymentStatus();
     }
-  }, [toast]);
+  }, [token]);
+
+  const checkPaymentStatus = async () => {
+    if (!token) {
+      setPaymentCompleted(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(API_ENDPOINTS.PAYMENTS.GET_MY, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const payments = await response.json();
+        
+        // Check if user has any completed payments
+        const hasPaid = payments.some((payment: any) => {
+          // Check if all required fields exist
+          if (!payment.status || !payment.payment_method) {
+            return false;
+          }
+          
+          const isCompleted = payment.status === 'completed';
+          const isPaystack = payment.payment_method === 'paystack';
+          
+          // Additional validation: check if payment amount is correct (8550 NGN)
+          const isCorrectAmount = payment.amount === 8550;
+          
+          return isCompleted && isPaystack && isCorrectAmount;
+        });
+        
+        if (hasPaid) {
+          setPaymentCompleted(true);
+        } else {
+          setPaymentCompleted(false);
+        }
+      } else {
+        // If we can't fetch payments, assume no payment (locked)
+        setPaymentCompleted(false);
+      }
+    } catch (error) {
+      // On error, assume no payment (locked)
+      setPaymentCompleted(false);
+    }
+  };
+
+  const verifyPayment = async (reference: string) => {
+    if (!token) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(API_ENDPOINTS.PAYMENTS.VERIFY, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reference })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
+          setPaymentCompleted(true);
+          toast({
+            title: "Payment Verified!",
+            description: "Your payment has been verified successfully. You can now submit your registration.",
+            variant: "default"
+          });
+        } else {
+          setPaymentCompleted(false);
+          toast({
+            title: "Payment Verification Failed",
+            description: data.message || "Failed to verify payment. Please contact support.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        setPaymentCompleted(false);
+        toast({
+          title: "Payment Verification Error",
+          description: "Failed to verify payment. Please contact support.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setPaymentCompleted(false);
+      toast({
+        title: "Payment Verification Error",
+        description: "Network error during payment verification. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -167,7 +269,7 @@ const Registration = () => {
         body: JSON.stringify({
           email: formData.emailAddress,
           amount: 8550,
-          callbackUrl: `${window.location.origin}/participate?payment=success`
+          callbackUrl: `${window.location.origin}/participate`
         })
       });
 

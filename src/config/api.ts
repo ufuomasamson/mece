@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
     CONTACT: `${API_BASE_URL}/api/submissions/contact`,
     UPDATE_PARTICIPATE: (id: string) => `${API_BASE_URL}/api/submissions/participate/${id}`,
     UPDATE_CONTACT: (id: string) => `${API_BASE_URL}/api/submissions/contact/${id}`,
+    DELETE_PARTICIPATE: (id: string) => `${API_BASE_URL}/api/submissions/participate/${id}`,
+    DELETE_CONTACT: (id: string) => `${API_BASE_URL}/api/submissions/contact/${id}`,
   },
   
   // Blog endpoints
@@ -36,6 +38,10 @@ export const API_ENDPOINTS = {
   // Admin endpoints
   ADMIN: {
     PAYSTACK_SETTINGS: `${API_BASE_URL}/api/admin/paystack-settings`,
+    USERS: `${API_BASE_URL}/api/admin/users`,
+    DELETE_USER: (id: string) => `${API_BASE_URL}/api/admin/users/${id}`,
+    SOCIAL_MEDIA: `${API_BASE_URL}/api/admin/social-media`,
+    UPDATE_SOCIAL_MEDIA: (id: string) => `${API_BASE_URL}/api/admin/social-media/${id}`,
   },
   
   // Payment endpoints
@@ -43,8 +49,14 @@ export const API_ENDPOINTS = {
     INITIALIZE: `${API_BASE_URL}/api/payments/initialize`,
     VERIFY: `${API_BASE_URL}/api/payments/verify`,
     GET_DETAILS: (reference: string) => `${API_BASE_URL}/api/payments/${reference}`,
-    GET_ALL: `${API_BASE_URL}/api/payments`,
+    GET_ALL: `${API_BASE_URL}/api/payments`, // Admin only - all payments
+    GET_MY: `${API_BASE_URL}/api/payments/my`, // User's own payments
     CONFIG: `${API_BASE_URL}/api/payments/config`,
+  },
+
+  // Social media endpoints
+  SOCIAL_MEDIA: {
+    GET_ALL: `${API_BASE_URL}/api/social-media`,
   },
 };
 

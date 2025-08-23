@@ -2,9 +2,20 @@ import axios from 'axios';
 
 class PaystackService {
   constructor() {
-    this.secretKey = process.env.PAYSTACK_SECRET_KEY;
-    this.publicKey = process.env.PAYSTACK_PUBLIC_KEY;
+    this.secretKey = null;
+    this.publicKey = null;
     this.baseURL = 'https://api.paystack.co';
+  }
+
+  // Set keys from database
+  setKeys(publicKey, secretKey) {
+    this.publicKey = publicKey;
+    this.secretKey = secretKey;
+  }
+
+  // Check if keys are configured
+  isConfigured() {
+    return !!(this.publicKey && this.secretKey);
   }
 
   // Initialize payment transaction

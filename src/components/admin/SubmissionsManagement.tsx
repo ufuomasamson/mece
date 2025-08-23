@@ -192,17 +192,55 @@ const SubmissionsManagement = () => {
     );
   };
 
-  const deleteParticipateSubmission = (id: string) => {
-    if (confirm("Are you sure you want to delete this submission?")) {
-      setParticipateSubmissions(prev => prev.filter(sub => sub.id !== id));
-      toast.success("Submission deleted successfully");
+  const deleteParticipateSubmission = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this submission? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS.DELETE_PARTICIPATE(id), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setParticipateSubmissions(prev => prev.filter(sub => sub.id !== id));
+        toast.success("Submission deleted successfully");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to delete submission");
+      }
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      toast.error("Failed to delete submission. Please try again.");
     }
   };
 
-  const deleteContactSubmission = (id: string) => {
-    if (confirm("Are you sure you want to delete this message?")) {
-      setContactSubmissions(prev => prev.filter(sub => sub.id !== id));
-      toast.success("Message deleted successfully");
+  const deleteContactSubmission = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this message? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS.DELETE_CONTACT(id), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setContactSubmissions(prev => prev.filter(sub => sub.id !== id));
+        toast.success("Message deleted successfully");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to delete message");
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error("Failed to delete message. Please try again.");
     }
   };
 

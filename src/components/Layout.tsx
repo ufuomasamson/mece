@@ -4,6 +4,7 @@ import { Menu, X, User, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContent } from "@/contexts/ContentContext";
+import SocialMediaLinks from './SocialMediaLinks';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -211,6 +212,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <p className="transform-gpu hover:scale-105 transition-transform duration-300">{content.footer.contact?.phone || "+234 8032160583"}</p>
                 <p className="transform-gpu hover:scale-105 transition-transform duration-300">{content.footer.contact?.email || "contact@mece.org.ng"}</p>
                 <p className="transform-gpu hover:scale-105 transition-transform duration-300">{content.footer.contact?.address || "35, Ajose Adeogun Street, Utako, Abuja, FCT"}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Social Media Links */}
+          <div className="border-t border-primary-foreground/20 mt-8 pt-8">
+            <div className="flex flex-col items-center space-y-4">
+              <h4 className="font-semibold text-center transform-gpu hover:scale-110 transition-transform duration-300">
+                Follow Us
+              </h4>
+              <div className="flex items-center justify-center space-x-6">
+                <SocialMediaLinks />
               </div>
             </div>
           </div>
