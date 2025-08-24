@@ -33,11 +33,19 @@ const PaystackIntegration = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.publicKey && data.secretKey) {
-          setPublicKey(data.publicKey);
-          setSecretKey(data.secretKey);
+        console.log('Loaded Paystack config data:', data);
+        
+        if (data.settings && data.settings.public_key && data.settings.secret_key) {
+          setPublicKey(data.settings.public_key);
+          setSecretKey(data.settings.secret_key);
           setIsConfigured(true);
+          console.log('Paystack config loaded successfully');
+        } else {
+          console.log('No valid Paystack config found:', data);
+          setIsConfigured(false);
         }
+      } else {
+        console.error('Failed to load Paystack config:', response.status);
       }
     } catch (error) {
       console.error("Error loading Paystack config:", error);
@@ -61,8 +69,9 @@ const PaystackIntegration = () => {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          publicKey: publicKey.trim(),
-          secretKey: secretKey.trim(),
+          public_key: publicKey.trim(),
+          secret_key: secretKey.trim(),
+          is_active: true
         }),
       });
 

@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Linkedin, 
-  Youtube, 
-  Globe 
-} from 'lucide-react';
+import { Globe } from 'lucide-react';
 import TikTokIcon from './icons/TikTokIcon';
 import { API_ENDPOINTS } from '@/config/api';
 
@@ -27,10 +20,19 @@ const SocialMediaLinks: React.FC = () => {
         const response = await fetch(API_ENDPOINTS.SOCIAL_MEDIA.GET_ALL);
         if (response.ok) {
           const data = await response.json();
-          setSocialLinks(data);
+          // The API returns { settings: [...] }, so we need to extract the settings array
+          const links = data.settings || data || [];
+          // Ensure it's an array
+          if (Array.isArray(links)) {
+            setSocialLinks(links);
+          } else {
+            console.error('Social media data is not an array:', links);
+            setSocialLinks([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching social media links:', error);
+        setSocialLinks([]);
       } finally {
         setLoading(false);
       }
@@ -39,19 +41,49 @@ const SocialMediaLinks: React.FC = () => {
     fetchSocialLinks();
   }, []);
 
-  // Icon mapping for different platforms
+  // Icon mapping for different platforms using custom SVG icons
   const getIcon = (iconName: string) => {
     switch (iconName.toLowerCase()) {
       case 'facebook':
-        return <Facebook className="h-6 w-6" />;
+        return (
+          <img 
+            src="/images/facebook-round-color-icon.svg" 
+            alt="Facebook" 
+            className="h-6 w-6"
+          />
+        );
       case 'twitter':
-        return <Twitter className="h-6 w-6" />;
+        return (
+          <img 
+            src="/images/twitter-square-color-icon.svg" 
+            alt="Twitter" 
+            className="h-6 w-6"
+          />
+        );
       case 'instagram':
-        return <Instagram className="h-6 w-6" />;
+        return (
+          <img 
+            src="/images/ig-instagram-icon.svg" 
+            alt="Instagram" 
+            className="h-6 w-6"
+          />
+        );
       case 'linkedin':
-        return <Linkedin className="h-6 w-6" />;
+        return (
+          <img 
+            src="/images/linkedin-app-icon.svg" 
+            alt="LinkedIn" 
+            className="h-6 w-6"
+          />
+        );
       case 'youtube':
-        return <Youtube className="h-6 w-6" />;
+        return (
+          <img 
+            src="/images/youtube-color-icon.svg" 
+            alt="YouTube" 
+            className="h-6 w-6"
+          />
+        );
       case 'tiktok':
         return <TikTokIcon className="h-6 w-6" />;
       default:
@@ -72,7 +104,8 @@ const SocialMediaLinks: React.FC = () => {
     );
   }
 
-  if (socialLinks.length === 0) {
+  // Safety check: ensure socialLinks is an array
+  if (!Array.isArray(socialLinks) || socialLinks.length === 0) {
     return null; // Don't show anything if no social links
   }
 

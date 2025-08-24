@@ -1,13 +1,13 @@
 # MECE Website - Admin Dashboard with SQLite & Payment Integration
 
-A modern React-based website with a comprehensive admin dashboard, SQLite database, and Stripe payment integration.
+A modern React-based website with a comprehensive admin dashboard, SQLite database, and Paystack payment integration.
 
 ## 🚀 Features
 
 - **Modern React 18 + TypeScript** frontend
 - **SQLite database** for data persistence
 - **Express.js backend** API server
-- **Stripe payment integration** for form submissions
+- **Paystack payment integration** for form submissions
 - **Admin dashboard** for content management
 - **Blog management system**
 - **Form submission handling** with payment processing
@@ -29,7 +29,7 @@ A modern React-based website with a comprehensive admin dashboard, SQLite databa
 
 - **Foreign key relationships** for data integrity
 - **Payment status tracking** for submissions
-- **Stripe customer integration** for recurring payments
+- **Paystack transaction integration** for payment processing
 - **Admin notes and responses** for submissions
 - **Content versioning** with timestamps
 
@@ -39,7 +39,7 @@ A modern React-based website with a comprehensive admin dashboard, SQLite databa
 
 - Node.js 18+ 
 - npm or yarn
-- Stripe account (for payments)
+- Paystack account (for payments)
 
 ### 1. Install Dependencies
 
@@ -59,10 +59,9 @@ NODE_ENV=development
 # Database Configuration
 DB_PATH=./server/database.sqlite
 
-# Stripe Configuration
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
-STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+# Paystack Configuration
+PAYSTACK_PUBLIC_KEY=pk_test_your_paystack_public_key_here
+PAYSTACK_SECRET_KEY=sk_test_your_paystack_secret_key_here
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key_here
@@ -73,12 +72,12 @@ DEFAULT_PAYMENT_AMOUNT=50.00
 DEFAULT_CURRENCY=USD
 ```
 
-### 3. Stripe Setup
+### 3. Paystack Setup
 
-1. Create a Stripe account at [stripe.com](https://stripe.com)
-2. Get your API keys from the Stripe Dashboard
+1. Create a Paystack account at [paystack.com](https://paystack.com)
+2. Get your API keys from the Paystack Dashboard
 3. Update the `.env` file with your keys
-4. Test with Stripe's test mode first
+4. Test with Paystack's test mode first
 
 ### 4. Development Mode
 
@@ -243,10 +242,10 @@ JWT_SECRET=your_secure_jwt_secret
    - Check server logs for errors
    - Ensure write permissions in server directory
 
-2. **Stripe payments failing:**
+2. **Paystack payments failing:**
    - Verify API keys in `.env`
-   - Check Stripe dashboard for errors
-   - Ensure webhook endpoints are configured
+   - Check Paystack dashboard for errors
+   - Ensure API keys are configured in admin dashboard
 
 3. **Port conflicts:**
    - Change `PORT` in `.env`
@@ -284,20 +283,43 @@ curl http://localhost:5000/api/health
 
 3. **Security updates:**
    - Keep dependencies updated
-   - Monitor Stripe security notices
+   - Monitor Paystack security notices
 
 ### Monitoring
 
 - **Server health:** `/api/health` endpoint
 - **Database size:** Monitor `database.sqlite` file size
-- **Payment success rate:** Stripe dashboard
+- **Payment success rate:** Paystack dashboard
 - **Error logs:** Server console output
+
+## 🚀 Deployment
+
+### Quick Deployment (File Manager)
+1. **Run deployment script:**
+   ```bash
+   # Windows
+   deploy-filemanager.bat
+   
+   # Linux/Mac
+   ./deploy-filemanager.sh
+   ```
+
+2. **Upload to cPanel:**
+   - Use File Manager to upload `mece-deployment/` contents
+   - Set up Node.js App in cPanel
+   - Configure environment variables
+
+3. **Start application:**
+   - Run `npm install` in Node.js app settings
+   - Restart the application
+
+**📖 See `FILEMANAGER_DEPLOYMENT.md` for quick guide or `CPANEL_DEPLOYMENT.md` for detailed instructions.**
 
 ## 📞 Support
 
 For technical support or questions:
 - Check the troubleshooting section
-- Review Stripe documentation
+- Review Paystack documentation
 - Check server logs for errors
 - Verify environment configuration
 
@@ -307,4 +329,4 @@ This project is proprietary software. All rights reserved.
 
 ---
 
-**Built with ❤️ using React, Express, SQLite, and Stripe**
+**Built with ❤️ using React, Express, SQLite, and Paystack**

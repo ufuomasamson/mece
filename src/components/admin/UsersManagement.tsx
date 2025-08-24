@@ -24,7 +24,7 @@ interface User {
   email: string;
   role: 'user' | 'admin';
   created_at: string;
-  submission_count: number;
+  submission_count?: number;
 }
 
 const UsersManagement = () => {
@@ -54,18 +54,18 @@ const UsersManagement = () => {
         
         if (response.ok) {
           const data = await response.json();
-          setUsers(data);
+          setUsers(data.users || []);
           
           // Calculate stats
-          const totalUsers = data.length;
-          const totalAdmins = data.filter((user: User) => user.role === 'admin').length;
+          const totalUsers = data.users.length;
+          const totalAdmins = data.users.filter((user: User) => user.is_admin).length;
           const totalRegularUsers = totalUsers - totalAdmins;
-          const totalSubmissions = data.reduce((sum: number, user: User) => sum + user.submission_count, 0);
+          const totalSubmissions = data.users.reduce((sum: number, user: User) => sum + (user.submission_count || 0), 0);
           
           // Calculate new users this month
           const currentMonth = new Date().getMonth();
           const currentYear = new Date().getFullYear();
-          const newUsersThisMonth = data.filter((user: User) => {
+          const newUsersThisMonth = data.users.filter((user: User) => {
             const userDate = new Date(user.created_at);
             return userDate.getMonth() === currentMonth && userDate.getFullYear() === currentYear;
           }).length;
@@ -133,9 +133,9 @@ const UsersManagement = () => {
         // Recalculate stats
         const updatedUsers = users.filter(user => user.id !== userId);
         const totalUsers = updatedUsers.length;
-        const totalAdmins = updatedUsers.filter(user => user.role === 'admin').length;
+        const totalAdmins = updatedUsers.filter(user => user.is_admin).length;
         const totalRegularUsers = totalUsers - totalAdmins;
-        const totalSubmissions = updatedUsers.reduce((sum, user) => sum + user.submission_count, 0);
+        const totalSubmissions = updatedUsers.reduce((sum, user) => sum + (user.submission_count || 0), 0);
         
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
@@ -299,9 +299,9 @@ const UsersManagement = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
-                        {getRoleBadge(user.role)}
-                        {getSubmissionBadge(user.submission_count)}
+                        <h3 className="text-lg font-semibold text-gray-900">{user.full_name}</h3>
+                        {getRoleBadge(user.is_admin ? 'admin' : 'user')}
+                        {getSubmissionBadge(user.submission_count || 0)}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -318,7 +318,7 @@ const UsersManagement = () => {
                         <div className="space-y-1">
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <FileText size={16} />
-                            <span>Submissions: {user.submission_count}</span>
+                            <span>Submissions: {user.submission_count || 0}</span>
                           </div>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <User size={16} />
@@ -331,7 +331,7 @@ const UsersManagement = () => {
                       <div className="bg-gray-50 p-3 rounded-md">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">
-                            <strong>Account Status:</strong> {user.role === 'admin' ? 'Administrator' : 'Active User'}
+                            <strong>Account Status:</strong> {user.is_admin ? 'Administrator' : 'Active User'}
                           </span>
                           <span className="text-gray-600">
                             <strong>Member Since:</strong> {formatDate(user.created_at)}
@@ -345,7 +345,7 @@ const UsersManagement = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => deleteUser(user.id, user.name)}
+                        onClick={() => deleteUser(user.id, user.full_name)}
                         disabled={deletingUserId === user.id || (currentUser && currentUser.id === user.id)}
                         className="hover:bg-red-600 transition-colors"
                       >

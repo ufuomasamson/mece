@@ -2,10 +2,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import API_ENDPOINTS from '@/config/api';
 
 interface User {
-  id: number;
-  name: string;
+  id: string;
+  username: string;
   email: string;
-  role: string;
+  full_name: string;
+  is_admin: boolean;
 }
 
 interface AuthContextType {

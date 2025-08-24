@@ -91,6 +91,7 @@ const Registration = () => {
   const [passportPreview, setPassportPreview] = useState<string>("");
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [paymentReference, setPaymentReference] = useState<string>("");
 
   const { toast } = useToast();
   const { token } = useAuth();
@@ -135,7 +136,7 @@ const Registration = () => {
             return false;
           }
           
-          const isCompleted = payment.status === 'completed';
+          const isCompleted = payment.status === 'success';
           const isPaystack = payment.payment_method === 'paystack';
           
           // Additional validation: check if payment amount is correct (8550 NGN)
@@ -179,6 +180,7 @@ const Registration = () => {
         
         if (data.success) {
           setPaymentCompleted(true);
+          setPaymentReference(data.payment.reference);
           toast({
             title: "Payment Verified!",
             description: "Your payment has been verified successfully. You can now submit your registration.",
@@ -260,6 +262,12 @@ const Registration = () => {
 
     setIsPaymentLoading(true);
     try {
+      console.log('Initiating payment with data:', {
+        email: formData.emailAddress,
+        amount: 8550,
+        callbackUrl: `${window.location.origin}/participate`
+      });
+
       const response = await fetch(API_ENDPOINTS.PAYMENTS.INITIALIZE, {
         method: 'POST',
         headers: {
@@ -269,36 +277,45 @@ const Registration = () => {
         body: JSON.stringify({
           email: formData.emailAddress,
           amount: 8550,
-          callbackUrl: `${window.location.origin}/participate`
+          callback_url: `${window.location.origin}/participate`
         })
       });
 
+      console.log('Payment response status:', response.status);
+      console.log('Payment response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Payment response data:', data);
         
-        if (data.success && data.authorization_url) {
+        if (data.authorization_url) {
+          console.log('Redirecting to Paystack:', data.authorization_url);
           // Redirect to Paystack payment page
           window.location.href = data.authorization_url;
         } else {
+          console.error('Payment response missing authorization_url:', data);
           toast({
             title: "Payment Error",
-            description: "Failed to initialize payment. Please try again.",
+            description: "Invalid payment response. Please try again.",
             variant: "destructive"
           });
         }
       } else {
         const errorData = await response.json();
+        console.error('Payment failed with status:', response.status);
+        console.error('Payment error response:', errorData);
+        
         toast({
           title: "Payment Error",
-          description: errorData.error || "Failed to initialize payment",
+          description: errorData.error || `Payment failed with status ${response.status}`,
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('Payment network error:', error);
       toast({
         title: "Payment Error",
-        description: "Failed to process payment. Please try again.",
+        description: "Network error. Please check your connection and try again.",
         variant: "destructive"
       });
     } finally {
@@ -402,7 +419,8 @@ const Registration = () => {
           registrationType: formData.registrationType,
           areasOfInterest: formData.areasOfInterest,
           otherArea: formData.otherArea,
-          passportPhoto: imageDataUrl
+          passportPhoto: imageDataUrl,
+          paymentReference: paymentReference
         })
       });
 
@@ -836,13 +854,18 @@ const Registration = () => {
                 type="submit" 
                 size="lg" 
                 className="px-8 py-3 text-lg font-semibold"
-                disabled={!paymentCompleted}
+                disabled={false} // Always allow form submission
               >
-                {paymentCompleted ? 'Submit Registration Form' : 'Complete Payment First'}
+                Submit Registration Form
               </Button>
               {!paymentCompleted && (
-                <p className="text-sm text-gray-500 mt-2">
-                  Please complete the payment above before submitting your registration form.
+                <p className="text-sm text-yellow-600 mt-2">
+                  ⚠️ Payment not completed. You can still submit your registration, but payment will be required later.
+                </p>
+              )}
+              {paymentCompleted && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✅ Payment completed. Your registration will be processed immediately.
                 </p>
               )}
             </div>

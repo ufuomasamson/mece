@@ -23,7 +23,8 @@ import {
   Target,
   FileText,
   Building,
-  CreditCard
+  CreditCard,
+  RefreshCw
 } from "lucide-react";
 
 interface ParticipateSubmission {
@@ -89,8 +90,11 @@ const SubmissionsManagement = () => {
           const data = await response.json();
           console.log('Submissions data:', data);
           
+          // Extract submissions array from response
+          const submissionsArray = data.submissions || [];
+          
           // Transform the data to match the frontend interface
-          const transformedData = data.map((submission: any) => {
+          const transformedData = submissionsArray.map((submission: any) => {
             try {
               return {
                 ...submission,
@@ -98,7 +102,9 @@ const SubmissionsManagement = () => {
                 areasOfInterest: submission.areas_of_interest ? 
                   (() => {
                     try {
-                      return JSON.parse(submission.areas_of_interest);
+                      return Array.isArray(submission.areas_of_interest) ? 
+                        submission.areas_of_interest : 
+                        JSON.parse(submission.areas_of_interest);
                     } catch (e) {
                       console.warn('Failed to parse areas_of_interest:', submission.areas_of_interest);
                       return [];
@@ -106,16 +112,16 @@ const SubmissionsManagement = () => {
                   })() : [],
                 // Map database field names to frontend names
                 fullName: submission.full_name || 'N/A',
-                emailAddress: submission.email_address || 'N/A',
+                emailAddress: submission.email || 'N/A',
                 phoneNumber: submission.phone_number || 'N/A',
                 whatsappNumber: submission.whatsapp_number || 'N/A',
                 telegramNumber: submission.telegram_number || '',
                 bankName: submission.bank_name || 'N/A',
                 accountNumber: submission.account_number || 'N/A',
                 stateOfOrigin: submission.state_of_origin || 'N/A',
-                lgaOfOrigin: submission.lga_of_origin || 'N/A',
+                lgaOfOrigin: submission.local_government || 'N/A',
                 stateOfResidence: submission.state_of_residence || 'N/A',
-                lgaOfResidence: submission.lga_of_residence || 'N/A',
+                lgaOfResidence: submission.local_government_residence || 'N/A',
                 registrationType: submission.registration_type || 'N/A',
                 otherArea: submission.other_area || '',
                 passportPhoto: submission.passport_photo || '',
@@ -148,33 +154,53 @@ const SubmissionsManagement = () => {
   const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
 
   // Fetch contact submissions from API
-  useEffect(() => {
-    const fetchContactSubmissions = async () => {
-      if (!token) return;
-      
-      try {
-        console.log('Fetching contact submissions with token:', token);
-        const response = await fetch(API_ENDPOINTS.SUBMISSIONS.CONTACT, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        console.log('Contact submissions response:', response.status, response.ok);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Contact submissions data:', data);
-          setContactSubmissions(data);
-        } else {
-          const errorData = await response.json();
-          console.error('Contact submissions fetch error:', errorData);
+  const fetchContactSubmissions = async () => {
+    if (!token) {
+      console.log('No token available for fetching contact submissions');
+      return;
+    }
+    
+    try {
+      console.log('Fetching contact submissions with token:', token.substring(0, 20) + '...');
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS.CONTACT, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (error) {
-        console.error('Error fetching contact submissions:', error);
+      });
+      
+      console.log('Contact submissions response:', response.status, response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Contact submissions data:', data);
+        console.log('Data type:', typeof data);
+        console.log('Has submissions property:', 'submissions' in data);
+        console.log('Submissions array length:', data.submissions?.length || 0);
+        
+        // Extract submissions array from response and transform to match frontend interface
+        const contactSubmissionsArray = (data.submissions || []).map((submission: any) => ({
+          id: submission.id,
+          name: submission.full_name || 'N/A',
+          email: submission.email || 'N/A',
+          message: submission.content || 'N/A',
+          submittedAt: submission.submitted_at || new Date().toISOString(),
+          status: submission.status || 'unread',
+          adminResponse: submission.admin_response || ''
+        }));
+        
+        console.log('Transformed contact submissions:', contactSubmissionsArray);
+        setContactSubmissions(contactSubmissionsArray);
+      } else {
+        const errorData = await response.json();
+        console.error('Contact submissions fetch error:', errorData);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching contact submissions:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchContactSubmissions();
   }, [token]);
 
@@ -295,29 +321,44 @@ const SubmissionsManagement = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid Date';
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Invalid Date';
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Submissions Management</h1>
-        <p className="text-gray-600 mt-2">Manage participate form submissions and contact messages</p>
-        
-        {/* Debug Info */}
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg text-sm">
-          <p><strong>Debug Info:</strong></p>
-          <p>Token present: {token ? 'Yes' : 'No'}</p>
-          <p>Token length: {token ? token.length : 0}</p>
-          <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
-          <p>Submissions count: {participateSubmissions.length}</p>
-          <p>Last fetch: {new Date().toLocaleTimeString()}</p>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Submissions Management</h2>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={() => {
+              fetchSubmissions();
+              fetchContactSubmissions();
+            }}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
       </div>
 

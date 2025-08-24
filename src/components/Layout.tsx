@@ -1,17 +1,17 @@
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useContent } from "@/contexts/ContentContext";
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useContent } from '@/contexts/ContentContext';
+import { Menu, X, User, LogOut } from 'lucide-react';
 import SocialMediaLinks from './SocialMediaLinks';
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const location = useLocation();
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const { content } = useContent();
+  const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Handle scroll effect
   useEffect(() => {
@@ -73,11 +73,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 {user ? (
                   <div className="flex items-center space-x-3">
                     <span className="text-primary-foreground text-sm font-medium">
-                      Welcome, {user.name}
+                      Welcome, {user.full_name}
                     </span>
-                    {user.role === 'admin' && (
+                    {user.is_admin && (
                       <Link to="/admin">
-                        <Button variant="outline" size="sm" className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary bg-transparent">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary bg-transparent"
+                        >
                           Admin
                         </Button>
                       </Link>
@@ -133,9 +137,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 {user ? (
                   <div className="space-y-3">
                     <div className="text-primary-foreground text-sm font-medium py-2">
-                      Welcome, {user.name}
+                      Welcome, {user.full_name}
                     </div>
-                    {user.role === 'admin' && (
+                    {user.is_admin && (
                       <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button variant="outline" size="sm" className="w-full text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary bg-transparent">
                           Admin Dashboard
@@ -181,13 +185,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <h3 className="text-2xl font-bold transform-gpu hover:scale-110 transition-transform duration-300">MECE</h3>
               </div>
               <p className="text-primary-foreground/80 transform-gpu hover:scale-105 transition-transform duration-300">
-                {content.footer.description}
+                {content?.footer?.description || "Empowering Innovation, Talent, and Sustainable Growth"}
               </p>
             </div>
             <div className="transform-gpu hover:scale-105 transition-transform duration-300">
               <h4 className="font-semibold mb-4 transform-gpu hover:scale-110 transition-transform duration-300">Quick Links</h4>
               <div className="space-y-2">
-                {content.footer.quickLinks.map((link, index) => (
+                {(content?.footer?.quickLinks || ["Home", "About Us", "Mission/Vision", "Blog", "Contact", "Registration"]).map((link, index) => (
                   <Link
                     key={index}
                     to={link === "Home" ? "/" : link === "About Us" ? "/about" : link === "Mission/Vision" ? "/mission" : link === "Blog" ? "/blog" : link === "Contact" ? "/contact" : link === "Registration" ? "/participate" : "/"}
@@ -201,7 +205,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="transform-gpu hover:scale-105 transition-transform duration-300">
               <h4 className="font-semibold mb-4 transform-gpu hover:scale-110 transition-transform duration-300">Services</h4>
               <div className="space-y-2 text-primary-foreground/80">
-                {content.footer.services.map((service, index) => (
+                {(content?.footer?.services || ["Talent Development", "Sports Management", "Agricultural Innovation", "Creative Arts & Music", "Technology Solutions"]).map((service, index) => (
                   <p key={index} className="transform-gpu hover:scale-105 transition-transform duration-300">{service}</p>
                 ))}
               </div>

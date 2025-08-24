@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 class PaystackService {
   constructor() {
@@ -151,7 +151,7 @@ class PaystackService {
     return `MECE_${timestamp}_${random}`.toUpperCase();
   }
 
-  // Validate amount (must be 8550 NGN)
+  // Validate amount (must be  8550 NGN) 
   validateAmount(amount) {
     const requiredAmount = 8550;
     if (amount !== requiredAmount) {
@@ -164,4 +164,4 @@ class PaystackService {
   }
 }
 
-export default PaystackService;
+module.exports = PaystackService;

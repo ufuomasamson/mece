@@ -1,18 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-import sqlite3 from 'sqlite3';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import PaystackService from './services/paystackService.js';
+const express = require('express');
+const cors = require('cors');
+const sqlite3 = require('sqlite3');
+const path = require('path');
+const dotenv = require('dotenv');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const PaystackService = require('./services/paystackService.js');
 
 // Load environment variables
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -21,10 +19,10 @@ const paystackService = new PaystackService();
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increased limit for passport photos
-app.use(express.static(join(__dirname, '../dist')));
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // Database setup
-const dbPath = join(__dirname, 'database.sqlite');
+const dbPath = path.join(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath);
 
 // JWT secret
@@ -1483,7 +1481,7 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
-  res.sendFile(join(__dirname, '../dist/index.html'));
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Start server

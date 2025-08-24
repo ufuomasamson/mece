@@ -71,7 +71,7 @@ const SocialMediaManagement: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setSocialMediaSettings(data);
+        setSocialMediaSettings(data.settings || []);
       } else {
         toast({
           title: "Error",
@@ -97,13 +97,27 @@ const SocialMediaManagement: React.FC = () => {
 
     setSaving(id);
     try {
-      const response = await fetch(API_ENDPOINTS.ADMIN.UPDATE_SOCIAL_MEDIA(id.toString()), {
+      // Find the setting to get the platform name
+      const setting = socialMediaSettings.find(s => s.id === id);
+      if (!setting) {
+        toast({
+          title: "Error",
+          description: "Setting not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.ADMIN.UPDATE_SOCIAL_MEDIA, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(updates)
+        body: JSON.stringify({
+          platform: setting.platform,
+          updates: updates
+        })
       });
 
       if (response.ok) {
@@ -291,15 +305,18 @@ const SocialMediaManagement: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-green-800">How It Works</CardTitle>
           <CardDescription className="text-green-600">
-            <ul className="list-disc list-inside space-y-1 mt-2">
-              <li>Set the URL for each social media platform</li>
-              <li>Toggle the "Active" switch to show/hide links on the homepage</li>
-              <li>Links will appear in the footer with appropriate icons</li>
-              <li>Users can click these links to visit your social media accounts</li>
-              <li>Changes are saved automatically when you click "Save Changes"</li>
-            </ul>
+            Set up and manage your social media presence
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <ul className="list-disc list-inside space-y-1 mt-2 text-green-700">
+            <li>Set the URL for each social media platform</li>
+            <li>Toggle the "Active" switch to show/hide links on the homepage</li>
+            <li>Links will appear in the footer with appropriate icons</li>
+            <li>Users can click these links to visit your social media accounts</li>
+            <li>Changes are saved automatically when you click "Save Changes"</li>
+          </ul>
+        </CardContent>
       </Card>
     </div>
   );
