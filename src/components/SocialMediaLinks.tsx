@@ -17,11 +17,16 @@ const SocialMediaLinks: React.FC = () => {
   useEffect(() => {
     const fetchSocialLinks = async () => {
       try {
+        console.log('Fetching social media links from:', API_ENDPOINTS.SOCIAL_MEDIA.GET_ALL);
         const response = await fetch(API_ENDPOINTS.SOCIAL_MEDIA.GET_ALL);
+        console.log('Social media response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Social media response data:', data);
           // The API returns { settings: [...] }, so we need to extract the settings array
           const links = data.settings || data || [];
+          console.log('Extracted social media links:', links);
           // Ensure it's an array
           if (Array.isArray(links)) {
             setSocialLinks(links);
@@ -29,6 +34,8 @@ const SocialMediaLinks: React.FC = () => {
             console.error('Social media data is not an array:', links);
             setSocialLinks([]);
           }
+        } else {
+          console.error('Social media response not ok:', response.status);
         }
       } catch (error) {
         console.error('Error fetching social media links:', error);
@@ -106,7 +113,33 @@ const SocialMediaLinks: React.FC = () => {
 
   // Safety check: ensure socialLinks is an array
   if (!Array.isArray(socialLinks) || socialLinks.length === 0) {
-    return null; // Don't show anything if no social links
+    // Show default social media icons as fallback
+    const defaultSocialLinks = [
+      { platform: 'facebook', url: '#', icon_name: 'facebook', display_name: 'Facebook' },
+      { platform: 'twitter', url: '#', icon_name: 'twitter', display_name: 'Twitter' },
+      { platform: 'instagram', url: '#', icon_name: 'instagram', display_name: 'Instagram' },
+      { platform: 'linkedin', url: '#', icon_name: 'linkedin', display_name: 'LinkedIn' },
+      { platform: 'youtube', url: '#', icon_name: 'youtube', display_name: 'YouTube' }
+    ];
+    
+    return (
+      <>
+        {defaultSocialLinks.map((link) => (
+          <a
+            key={link.platform}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group p-3 bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full transition-all duration-300 transform-gpu hover:scale-110 hover:rotate-3"
+            title={link.display_name}
+          >
+            <div className="text-primary-foreground group-hover:text-primary-foreground transition-colors duration-300">
+              {getIcon(link.icon_name)}
+            </div>
+          </a>
+        ))}
+      </>
+    );
   }
 
   return (
