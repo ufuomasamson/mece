@@ -1096,6 +1096,78 @@ app.delete('/api/admin/submissions/:id', authenticateToken, requireAdmin, async 
   }
 });
 
+// Delete participate submission (admin only)
+app.delete('/api/submissions/participate/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First check if it's a participate submission
+    const { data: submission, error: findError } = await supabase
+      .from('submissions')
+      .select('id, submission_type')
+      .eq('id', id)
+      .single();
+
+    if (findError || !submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    if (submission.submission_type !== 'participate') {
+      return res.status(400).json({ error: 'This endpoint is only for participate submissions' });
+    }
+
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to delete participate submission', details: error.message });
+    }
+
+    res.json({ message: 'Participate submission deleted successfully' });
+  } catch (error) {
+    console.error('Delete participate submission error:', error);
+    res.status(500).json({ error: 'Failed to delete participate submission', details: error.message });
+  }
+});
+
+// Delete contact submission (admin only)
+app.delete('/api/submissions/contact/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First check if it's a contact submission
+    const { data: submission, error: findError } = await supabase
+      .from('submissions')
+      .select('id, submission_type')
+      .eq('id', id)
+      .single();
+
+    if (findError || !submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    if (submission.submission_type !== 'contact') {
+      return res.status(400).json({ error: 'This endpoint is only for contact submissions' });
+    }
+
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to delete contact submission', details: error.message });
+    }
+
+    res.json({ message: 'Contact submission deleted successfully' });
+  } catch (error) {
+    console.error('Delete contact submission error:', error);
+    res.status(500).json({ error: 'Failed to delete contact submission', details: error.message });
+  }
+});
+
 // Paystack payment initialization
 app.post('/api/payments/initialize', authenticateToken, async (req, res) => {
   try {
