@@ -92,6 +92,7 @@ const Registration = () => {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [paymentReference, setPaymentReference] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // New state for submission status
 
   const { toast } = useToast();
   const { token } = useAuth();
@@ -115,11 +116,13 @@ const Registration = () => {
 
   const checkPaymentStatus = async () => {
     if (!token) {
+      console.log('No token available, setting payment completed to false');
       setPaymentCompleted(false);
       return;
     }
     
     try {
+      console.log('Checking payment status for user...');
       const response = await fetch(API_ENDPOINTS.PAYMENTS.GET_MY, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -128,33 +131,46 @@ const Registration = () => {
 
       if (response.ok) {
         const payments = await response.json();
+        console.log('Payment response:', payments);
         
         // Check if user has any completed payments
         const hasPaid = payments.some((payment: any) => {
           // Check if all required fields exist
           if (!payment.status || !payment.payment_method) {
+            console.log('Payment missing required fields:', payment);
             return false;
           }
           
           const isCompleted = payment.status === 'success';
           const isPaystack = payment.payment_method === 'paystack';
-          
-          // Additional validation: check if payment amount is correct (8550 NGN)
           const isCorrectAmount = payment.amount === 8550;
+          
+          console.log('Payment validation:', { 
+            payment: payment.reference, 
+            status: payment.status, 
+            method: payment.payment_method, 
+            amount: payment.amount,
+            isCompleted, 
+            isPaystack, 
+            isCorrectAmount 
+          });
           
           return isCompleted && isPaystack && isCorrectAmount;
         });
         
+        console.log('User has paid:', hasPaid);
         if (hasPaid) {
           setPaymentCompleted(true);
         } else {
           setPaymentCompleted(false);
         }
       } else {
+        console.log('Payment fetch failed with status:', response.status);
         // If we can't fetch payments, assume no payment (locked)
         setPaymentCompleted(false);
       }
     } catch (error) {
+      console.error('Error checking payment status:', error);
       // On error, assume no payment (locked)
       setPaymentCompleted(false);
     }
@@ -325,36 +341,31 @@ const Registration = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check if payment is completed
+    
+    // Prevent submission if payment is not completed
     if (!paymentCompleted) {
       toast({
         title: "Payment Required",
-        description: "Please complete the payment before submitting your registration",
+        description: "Please complete the registration fee payment before submitting your registration form.",
         variant: "destructive"
       });
       return;
     }
 
-    if (!formData.passportPhoto) {
+    // Prevent submission if no payment reference
+    if (!paymentReference) {
       toast({
-        title: "Passport Photo Required",
-        description: "Please upload a passport photograph to continue.",
+        title: "Payment Reference Missing",
+        description: "Payment reference is required. Please complete the payment process first.",
         variant: "destructive"
       });
       return;
     }
 
-    if (formData.areasOfInterest.length === 0) {
-      toast({
-        title: "Area of Interest Required",
-        description: "Please select at least one area of interest.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    console.log('Submitting registration with payment status:', { paymentCompleted, paymentReference });
+    
     try {
+      setIsSubmitting(true);
       // Compress and convert file to data URL for storage
       const compressAndConvertImage = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -465,6 +476,8 @@ const Registration = () => {
         description: "There was an error submitting your registration. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -854,13 +867,20 @@ const Registration = () => {
                 type="submit" 
                 size="lg" 
                 className="px-8 py-3 text-lg font-semibold"
-                disabled={false} // Always allow form submission
+                disabled={!paymentCompleted || isSubmitting} // Only allow submission after payment
               >
-                Submit Registration Form
+                {isSubmitting ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Submitting...</span>
+                  </div>
+                ) : (
+                  "Submit Registration Form"
+                )}
               </Button>
               {!paymentCompleted && (
                 <p className="text-sm text-yellow-600 mt-2">
-                  ⚠️ Payment not completed. You can still submit your registration, but payment will be required later.
+                  ⚠️ Payment required. Please complete the payment above before submitting your registration.
                 </p>
               )}
               {paymentCompleted && (
